@@ -1,118 +1,120 @@
-import Polyhedron from './Polyhedron'
-import * as THREE from 'three'
-import { Canvas } from '@react-three/fiber'
-import { Stats, OrbitControls } from '@react-three/drei'
-import { useControls } from 'leva'
-import Floor from './Floor'
+import {
+  Stats,
+  OrbitControls,
+  Circle,
+  Environment,
+  Sphere,
+  ContactShadows
+} from '@react-three/drei'
+import { Canvas, useLoader } from '@react-three/fiber'
+import { Leva, useControls } from 'leva'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader'
 
-function Lights() {
-  const ambientCtl = useControls('Ambient Light', {
-    visible: false,
-    intensity: {
-      value: 1.0,
-      min: 0,
-      max: 1.0,
-      step: 0.1
-    }
+function Env() {
+  const { height, radius, scale, offset } = useControls('Ground', {
+    height: { value: 10, min: 0, max: 100, step: 1 },
+    radius: { value: 36, min: 0, max: 1000, step: 1 },
+    scale: { value: 349, min: 0, max: 1000, step: 1 }
+    // offset: { value: 0, min: -10, max: 10 }
   })
+  return (
+    <Environment
+      files={['/img/little_paris_eiffel_tower_1k.hdr']}
+      background
+      ground={{
+        height: height,
+        radius: radius,
+        scale: scale
+        // offset: offset
+      }}
+    />
+  )
+}
 
-  const directionalCtl = useControls('Directional Light', {
+function Model({ gltf }) {
+  const {
+    x,
+    y,
+    z,
+    visible,
+    color,
+    metalness,
+    roughness,
+    clearcoat,
+    clearcoatRoughness,
+    transmission,
+    ior,
+    thickness
+  } = useControls('Suzanne', {
+    x: { value: 0, min: 0, max: Math.PI * 2, step: 0.01 },
+    y: { value: 0, min: 0, max: Math.PI * 2, step: 0.01 },
+    z: { value: 0, min: 0, max: Math.PI * 2, step: 0.01 },
     visible: true,
-    position: {
-      x: 3.3,
-      y: 1.0,
-      z: 4.4
-    },
-    castShadow: true
+    color: { value: '#ffbc85' },
+    metalness: { value: 0, min: 0, max: 1, step: 0.01 },
+    roughness: { value: 0, min: 0, max: 1, step: 0.01 },
+    clearcoat: { value: 1, min: 0, max: 1, step: 0.01 },
+    clearcoatRoughness: { value: 0, min: 0, max: 1, step: 0.01 },
+    transmission: { value: 1, min: 0, max: 1, step: 0.01 },
+    ior: { value: 1.5, min: 0, max: 2, step: 0.01 },
+    thickness: { value: 0.1, min: 0, max: 1, step: 0.01 }
   })
 
-  const pointCtl = useControls('Point Light', {
-    visible: false,
-    position: {
-      x: 2,
-      y: 0,
-      z: 0
-    },
-    castShadow: true
-  })
+  return (
+    <primitive
+      object={gltf.scene}
+      children-0-castShadow
+      children-0-rotation={[x, y, z]}
+      children-0-visible={visible}
+      children-0-material-color={color}
+      children-0-material-metalness={metalness}
+      children-0-material-roughness={roughness}
+      children-0-material-clearcoat={clearcoat}
+      children-0-material-clearcoatRoughness={clearcoatRoughness}
+      children-0-material-transmission={transmission}
+      children-0-material-ior={ior}
+      children-0-material-thickness={thickness}
+    />
+  )
+}
 
-  const spotCtl = useControls('Spot Light', {
-    visible: false,
-    position: {
-      x: 3,
-      y: 2.5,
-      z: 1
-    },
+function Light() {
+  const { x, y, z, intensity, castShadow } = useControls('light', {
+    x: { value: 3.3, min: 0, max: 100, step: 0.01 },
+    y: { value: 1.0, min: 0, max: 100, step: 0.01 },
+    z: { value: 4.4, min: 0, max: 100, step: 0.01 },
+    intensity: { value: Math.PI * 4, min: 0, max: 50, step: 0.1 },
     castShadow: true
   })
+  return (
+    <directionalLight
+      position={[x, y, z]}
+      castShadow={castShadow}
+      intensity={intensity}>
+      <Sphere args={[0.25]} position={[x, y, z]}></Sphere>
+    </directionalLight>
+  )
+}
+
+export default function App() {
+  const gltf = useLoader(GLTFLoader, '/models/my-scene.glb')
 
   return (
     <>
-      <ambientLight
-        visible={ambientCtl.visible}
-        intensity={ambientCtl.intensity}
-      />
-      <directionalLight
-        visible={directionalCtl.visible}
-        position={[
-          directionalCtl.position.x,
-          directionalCtl.position.y,
-          directionalCtl.position.z
-        ]}
-        castShadow={directionalCtl.castShadow}
-      />
-      <pointLight
-        visible={pointCtl.visible}
-        position={[
-          pointCtl.position.x,
-          pointCtl.position.y,
-          pointCtl.position.z
-        ]}
-        castShadow={pointCtl.castShadow}
-      />
-      <spotLight
-        visible={spotCtl.visible}
-        position={[spotCtl.position.x, spotCtl.position.y, spotCtl.position.z]}
-        castShadow={spotCtl.castShadow}
-      />
+      <Canvas camera={{ position: [-8, 5, 8] }}>
+        <Env />
+        {/* <Light /> */}
+        <Model gltf={gltf} />
+        <ContactShadows
+          scale={150}
+          position={[0.33, -0.33, 0.33]}
+          opacity={1.5}
+        />
+        <OrbitControls target={[0, 1, 0]} maxPolarAngle={Math.PI / 2} />
+        <axesHelper args={[5]} />
+        <Stats />
+      </Canvas>
+      <Leva collapsed />
     </>
-  )
-}
-export default function App() {
-  return (
-    <Canvas camera={{ position: [4, 4, 1.5] }} shadows>
-      <Lights />
-      <Polyhedron
-        name="meshBasicMaterial"
-        position={[-3, 1, 0]}
-        material={new THREE.MeshBasicMaterial({ color: 'yellow' })}
-      />
-      <Polyhedron
-        name="meshNormalMaterial"
-        position={[-1, 1, 0]}
-        material={new THREE.MeshNormalMaterial({ flatShading: true })}
-      />
-      <Polyhedron
-        name="meshPhongMaterial"
-        position={[1, 1, 0]}
-        material={
-          new THREE.MeshPhongMaterial({ color: 'lime', flatShading: true })
-        }
-      />
-      <Polyhedron
-        name="meshStandardMaterial"
-        position={[3, 1, 0]}
-        material={
-          new THREE.MeshStandardMaterial({
-            color: 0xff0033,
-            flatShading: true
-          })
-        }
-      />
-      <Floor />
-      <OrbitControls target={[2, 2, 0]} />
-      <axesHelper args={[5]} />
-      <Stats />
-    </Canvas>
   )
 }
